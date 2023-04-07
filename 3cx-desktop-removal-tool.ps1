@@ -1,9 +1,4 @@
-<# CX Desktop Uninstaller : : REDUX build 6/seagull, apr 2023
-   ce script, comme tous les scripts du composant Datto RMM, sauf indication contraire, est la propriété protégée de Datto, Inc ;
-   il ne peut être partagé, vendu ou distribué au-delà du produit Datto RMM, en totalité ou en partie, même avec des modifications appliquées, pour quelque raison que ce soit. cela inclut les sites reddit et les sites web. 
-   Ceci inclut sur reddit, sur discord, ou en tant que partie d'autres outils RMM. PCSM est la seule exception à cette règle.	
-   A partir du moment où vous modifiez ce script, il devient votre propre risque et le support ne fournira pas d'assistance à ce sujet.#>
-  
+<# 3CX Desktop Uninstaller #>
 function getUserGUID ($softwareTitle) {
     try {
         Get-ChildItem "Registry::HKEY_USERS\" -ea 0 | ? { $_.PSIsContainer } | % {
@@ -31,26 +26,26 @@ function getUserGUID ($softwareTitle) {
 write-host "3CX Desktop Uninstallation Tool"
 write-host "================================"
 
-#is 3CX desktop actually installed?
+#Vérification si 3CX est installé
 if ((getUserGUID "3CX Desktop").count -eq 0) {
     write-host "- 3CX Desktop was not found on this device. It appears to have been uninstalled."
     write-host "  All is well. Exiting." #and nothing hurt
     exit
 }
 
-#first, kill 3CX desktop :: don't report each individual 'kill' as the software, reasonably, likes to run eighty simultaneous copies
+#Kill les process 3CX
 get-process | ? {$_.ProcessName -match '3cx'} | % {
     stop-process -Name $_.ProcessName -Force
 }
 write-host "- 3CX Processes have been killed."
 
-#next, find user-level uninstallers and set user-level uninstallation task schedules
+#Définir dans les tâches planifiées la désinstallation
 getUserGUID "3CX Desktop" | % {
     write-host "- Found $($_.DisplayName) installed for user $($_.Username); scheduled removal task."
     schtasks /create /sc hourly /tn "3CX Uninstallation for $($_.Username)" /tr "msiexec /x $($_.GUID) /qn" /st $(([DateTime]::Now.AddMinutes(2)).ToString("HH:mm")) /et $(([DateTime]::Now.AddMinutes(4)).ToString("HH:mm")) /ru "$($_.Username)" /f /z | out-null
 }
 
-#finally, remove the directory by force, to address infected DLLs
+#Suppression des répertoires de force, pour s'attaquer aux DLL infectées
 gci "$env:SystemDrive\Users" | % {
     if (test-path "$($_.FullName)\AppData\Local\Programs\3CXDesktopApp") {
         remove-item "$($_.FullName)\AppData\Local\Programs\3CXDesktopApp" -Force -Recurse
@@ -69,11 +64,10 @@ gci "$env:SystemDrive\Users" | % {
  Ce qui reste de 3CX n'est pas considéré comme nuisible ; il est supprimé par souci de rigueur.
 
  Un raccourci "3CX Desktop" restera sur le bureau pendant quelques minutes jusqu'à ce que cette seconde désinstallation soit effectuée.
- désinstallation. Si vous êtes vigilant, gardez cela à l'esprit.
- La désinstallation complète de 3CX Desktop peut être confirmée en réexécutant ce composant.
+ Si vous êtes vigilant, gardez cela à l'esprit : la désinstallation complète de 3CX Desktop peut être confirmée en réexécutant ce composant.
  
  Le répertoire '3CXPhone for Windows' dans $env:ProgramData a été conservé.
  Son contenu n'est pas considéré comme nuisible et peut contenir des données de configuration importantes.
  
- Contactez les experts de Dhala Cyberdéfense https://dhala.fr/ pour obtenir de l'aide. Merci à Seagull pour le script.
+ Contactez les experts de Dhala Cyberdéfense https://dhala.fr/ pour obtenir de l'aide. Merci à Seagull et Datto pour le script.
 "@
